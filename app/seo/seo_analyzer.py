@@ -1027,91 +1027,146 @@ def check_iframe_usage(soup, threshold: int = 3):
 
 
 def analyze_html_size(html):
-    """Analyzes the size of the HTML document."""
+    """Analyzes the size of the HTML document and provides SEO-friendly recommendations."""
     html_bytes = html.encode('utf-8')
-    size_kb = len(html_bytes) / 1024  # convert to KB
+    size_kb = len(html_bytes) / 1024  # Convert to KB
 
     if size_kb < 100:
-        status = "passed"
-        description = f"HTML size is optimal at {size_kb:.2f} KB."
-        how_to_fix = None
+        return {
+            "status": "passed",
+            "description": f"HTML size is optimal at {size_kb:.2f} KB.",
+            "code_snippet": [f"HTML Size: {size_kb:.2f} KB"],
+            "how_to_fix": "No action needed. HTML size is within optimal range."
+        }
     elif size_kb < 300:
-        status = "warning"
-        description = f"HTML size is moderately large at {size_kb:.2f} KB."
-        how_to_fix = (
-            "Consider removing unnecessary inline scripts, whitespace, comments, or unused HTML elements."
-        )
+        return {
+            "status": "warning",
+            "description": f"HTML size is moderately large at {size_kb:.2f} KB.",
+            "code_snippet": [f"HTML Size: {size_kb:.2f} KB"],
+
+            "how_to_fix": (
+                "Consider removing inline scripts/styles, comments, whitespace, and unused HTML tags. "
+                "Use external resources where possible."
+            )
+        }
     else:
-        status = "failed"
-        description = f"HTML size is too large at {size_kb:.2f} KB."
-        how_to_fix = (
-            "Minify the HTML, defer non-critical resources, reduce DOM complexity, "
-            "and avoid excessive inline styles or large embedded data."
-        )
+        return {
+            "status": "failed",
+            "description": f"HTML size is too large at {size_kb:.2f} KB. This can impact loading time and crawl efficiency.",
+            "code_snippet": [f"HTML Size: {size_kb:.2f} KB"],
 
-    return {
-        "status": status,
-        "description": description,
-        "code_snippet": [f"HTML Size: {size_kb:.2f} KB"],
-        "how_to_fix": how_to_fix
-    }
+            "how_to_fix": (
+                "Minify the HTML, defer or load scripts asynchronously, remove unused elements, "
+                "and reduce DOM depth and complexity."
+            )
+        }
 
 
-def analyze_minification(soup, asset_type):
-    """Analyzes whether CSS or JS files are minified."""
+
+import re
+from typing import List
+
+def analyze_minification(soup, asset_type: str):
+    """Analyzes whether external CSS or JS files are minified based on their file names or URL characteristics."""
     assert asset_type in ("css", "js"), "asset_type must be either 'css' or 'js'"
+
     minified_count = 0
     total_count = 0
     unminified_snippets: List[str] = []
 
     if asset_type == "js":
         tags = soup.find_all("script", src=True)
+
         for tag in tags:
             src = tag["src"]
             total_count += 1
-            if ".min.js" in src or re.search(r"\S{100,}", src):
+
+            if ".min.js" in src or re.search(r"[^\s]{100,}", src):
                 minified_count += 1
             else:
                 unminified_snippets.append(f'<script src="{src}"></script>')
     elif asset_type == "css":
         tags = soup.find_all("link", rel="stylesheet", href=True)
+
         for tag in tags:
             href = tag["href"]
             total_count += 1
-            if ".min.css" in href or re.search(r"\S{100,}", href):
+
+            if ".min.css" in href or re.search(r"[^\s]{100,}", href):
                 minified_count += 1
             else:
                 unminified_snippets.append(f'<link rel="stylesheet" href="{href}">')
 
     if total_count == 0:
-        status = "warning"
-        description = f"No external {asset_type.upper()} files found to analyze for minification."
-        how_to_fix = None
-    elif minified_count == total_count:
+        return {
+            "status": "warning",
+            "description": f"No external {asset_type.upper()} files found to analyze for minification.",
+            "code_snippet": None,
+            "how_to_fix": f"Include external {asset_type.upper()} files via <script> or <link> tags for performance benefits."
+        }
+
+    minified_ratio = minified_count / total_count
+
+    if minified_ratio == 1.0:
         status = "passed"
-        description = f"All {total_count} {asset_type.upper()} files appear to be minified."
-        how_to_fix = None
-    elif minified_count >= total_count * 0.5:
+        description = f"All {total_count} {asset_type.upper()} files are minified."
+        how_to_fix = "No action needed. All assets are optimized."
+    elif minified_ratio >= 0.5:
         status = "warning"
-        description = (f"{minified_count}/{total_count} {asset_type.upper()} files are minified. Some still need "
-                       f"optimization.")
-        how_to_fix = (f"Minify all your {asset_type.upper()} files using tools like Terser, UglifyJS, cssnano, "
-                      f"or online minifiers. Prefer `.min.{asset_type}` naming convention.")
+        description = f"{minified_count}/{total_count} {asset_type.upper()} files are minified. Some are not."
+
+        how_to_fix = (
+            f"Minify remaining {asset_type.upper()} files using tools like Terser, UglifyJS, cssnano, or a CI/CD pipeline. "
+            f"Prefer using `.min.{asset_type}` naming for clarity."
+        )
     else:
         status = "failed"
-        description = (f"Only {minified_count}/{total_count} {asset_type.upper()} files are minified. Most are not "
-                       f"optimized.")
-        how_to_fix = (f"Minify your {asset_type.upper()} assets for faster load times. Consider automating this with "
-                      f"your CI/CD pipeline or Webpack/Gulp build process.")
+        description = f"Only {minified_count}/{total_count} {asset_type.upper()} files are minified. Most are not optimized."
 
-    code_snippet = [unminified_snippets[0]] if unminified_snippets else None
+        how_to_fix = (
+            f"Minify all your {asset_type.upper()} files to improve load time and performance. "
+            f"Automate this using build tools like Webpack, Gulp, or CI/CD scripts."
+        )
 
     return {
         "status": status,
         "description": description,
-        "code_snippet": code_snippet,
+        "code_snippet": [unminified_snippets[0]] if unminified_snippets else None,
         "how_to_fix": how_to_fix
     }
+
+
+def check_secure_connection(final_url: str):
+    """Checks if the website uses a secure HTTPS connection."""
+    try:
+        if final_url.startswith("https://"):
+            return {
+                "status": "passed",
+                "description": "The site uses HTTPS, ensuring secure communication.",
+                "code_snippet": [f"Final URL: {final_url}"],
+                "how_to_fix": "No action needed. The site uses HTTPS."
+            }
+        else:
+            return {
+                "status": "failed",
+                "description": "The site does not use HTTPS. This may pose a security risk and affect SEO.",
+                "code_snippet": [f"Final URL: {final_url}"],
+
+                "how_to_fix": (
+                    "Enable HTTPS by installing an SSL certificate. "
+                    "You can use free services like Let's Encrypt. "
+                    "Also, redirect all HTTP requests to HTTPS in your server configuration."
+                )
+            }
+    except Exception as e:
+        return {
+            "status": "failed",
+            "description": f"Unable to determine if the connection is secure: {str(e)}",
+            "code_snippet": [f"URL: {final_url}"],
+            "how_to_fix": "Ensure your URL is correctly formatted and check server SSL configuration."
+        }
+
+
 
 
 def analyze(url):
@@ -1135,7 +1190,7 @@ def analyze(url):
         "opengraph": check_opengraph(soup),
         "robots_txt": check_robots_txt(final_url),
         "schema_org": analyze_schema_org(soup),
-        # "secure_connection": {"status": "passed"}, # final_url.startswith("https"),
+        "secure_connection": check_secure_connection(final_url),
         "favicon_present": check_favicon(soup),
         "amp_page": check_amp(soup),
         "http_to_https_redirect": check_http_redirect(final_url),
