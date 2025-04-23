@@ -48,8 +48,8 @@ class SEOView(APIView):
     """
     API view for handling SEO-related requests.
     """
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticated]
+    # authentication_classes = [TokenAuthentication]
+    # permission_classes = [IsAuthenticated]
 
     @extend_schema(
         parameters=[

@@ -13,16 +13,16 @@ def create_user(**params):
     return get_user_model().objects.create_user(**params)
 
 
-class PublicSEOAPITests(TestCase):
-    """Test unauthenticated API requests."""
+# class PublicSEOAPITests(TestCase):
+#     """Test unauthenticated API requests."""
 
-    def setUp(self):
-        self.client = APIClient()
+#     def setUp(self):
+#         self.client = APIClient()
 
-    def test_auth_required(self):
-        """Test auth is required to call API."""
-        res = self.client.get(SEO_ANALYZER_URL)
-        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+#     def test_auth_required(self):
+#         """Test auth is required to call API."""
+#         res = self.client.get(SEO_ANALYZER_URL)
+#         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
 class PrivateSEOAPITests(TestCase):
