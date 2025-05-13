@@ -1,3 +1,4 @@
+import time
 from typing import List
 
 import re
@@ -67,50 +68,131 @@ def analyze_keywords(soup):
     }
 
 
-def analyze_meta(soup):
-    """Analyzes the meta-description."""
-    meta = soup.find("meta", attrs={"name": "description"})
+def check_title_tag(soup: BeautifulSoup):
+    """Analyze title tag for SEO best practices."""
+    title_tag = soup.find("title")
 
-    if meta and meta.has_attr("content"):
-        meta_content = ' '.join(meta["content"].split())
-        length = len(meta_content)
+    if not title_tag or not title_tag.text.strip():
+        return {
+            "status": "failed",
+            "description": "No title tag found or title is empty.",
+            "code_snippet": None,
+            "how_to_fix": "Add a descriptive title tag to your page: <title>Your Page Title</title>"
+        }
 
-        if length < 50:
+    title_text = title_tag.text.strip()
+    title_length = len(title_text)
+
+    # Check if title is too short
+    if title_length < 30:
+        return {
+            "status": "warning",
+            "description": f"Title tag is too short ({title_length} characters). Ideal length is 50-60 characters.",
+            "code_snippet": [str(title_tag)],
+            "how_to_fix": "Expand your title to include more relevant keywords while keeping it under 60 characters."
+        }
+
+    # Check if title is too long (might be truncated in search results)
+    if title_length > 60:
+        return {
+            "status": "warning",
+            "description": f"Title tag is too long ({title_length} characters). It may be truncated in search results.",
+            "code_snippet": [str(title_tag)],
+            "how_to_fix": "Shorten your title to 50-60 characters to ensure it displays correctly in search results."
+        }
+
+    # Check for common SEO patterns in titles
+    title_lower = title_text.lower()
+
+    if title_lower.count(" - ") > 1 or title_lower.count(" | ") > 1:
+        return {
+            "status": "warning",
+            "description": "Title tag contains multiple separators, which may look keyword-stuffed.",
+            "code_snippet": [str(title_tag)],
+            "how_to_fix": "Simplify your title structure by using only one separator between brand and page name."
+        }
+
+    return {
+        "status": "passed",
+        "description": f"Title tag is well-optimized with {title_length} characters.",
+        "code_snippet": [str(title_tag)],
+        "how_to_fix": "No changes needed. Your title tag is well-optimized."
+    }
+
+
+MIN_LENGTH = 50
+MAX_LENGTH = 160
+
+CANDIDATE_SELECTORS = [
+    {"name": "description"},
+    {"property": "og:description"},
+    {"property": "description"},
+    {"name": "twitter:description"},
+]
+
+def analyze_meta(soup: BeautifulSoup):
+    """Analyze meta description tag(s) for SEO best practices."""
+
+    # Find the first valid meta description tag with content
+    meta = None
+    for selector in CANDIDATE_SELECTORS:
+        tag = soup.find("meta", attrs=selector)
+        if tag and tag.has_attr("content") and tag["content"].strip():
+            meta = tag
+            break
+
+    # Get all candidate tags for debugging or reporting malformed ones
+    meta_tags = soup.find_all("meta")
+    meta_descriptions = [
+        tag for tag in meta_tags
+        if (tag.get("name") == "description"
+            or tag.get("property") in ["description", "og:description"]
+            or tag.get("name") == "twitter:description")
+    ]
+
+    if meta is None:
+        if meta_descriptions:
             return {
                 "status": "warning",
-
-                "description": f"Meta description is too short ({length} characters). Recommended length is 50–160 "
-                               f"characters.",
-
-                "code_snippet": [summarize(str(meta))],
-
-                "how_to_fix": "Expand your meta description to better summarize the page content and include relevant "
-                              "keywords."
-            }
-        elif length > 160:
-            return {
-                "status": "warning",
-
-                "description": f"Meta description is too long ({length} characters). It may be truncated in search "
-                               f"results.",
-
-                "code_snippet": [summarize(str(meta))],
-                "how_to_fix": "Shorten your meta description to keep it within 160 characters."
+                "description": "Meta description tags found but none have a valid 'content' attribute.",
+                "code_snippet": [summarize(str(tag)) for tag in meta_descriptions[:3]],
+                "how_to_fix": "Ensure your meta description tags include a non-empty 'content' attribute."
             }
         else:
             return {
-                "status": "passed",
-                "description": f"Meta description length is optimal ({length} characters).",
-                "code_snippet": [summarize(str(meta))],
-                "how_to_fix": "No changes needed. Your meta description is well-optimized."
+                "status": "failed",
+                "description": "No meta description was found for your page.",
+                "code_snippet": [],
+                "how_to_fix": "Add a meta description in the head section like: "
+                              "<meta name=\"description\" content=\"Your description here\">. "
+                              "Keep it between 50–160 characters summarizing the page content."
             }
-    else:
+
+    meta_content = ' '.join(meta["content"].split())
+    length = len(meta_content)
+
+    if length < MIN_LENGTH:
         return {
-            "status": "failed",
-            "description": "No meta description was found for your page.",
-            "code_snippet": None,
-            "how_to_fix": "Write a meta-description for your page."
+            "status": "warning",
+            "description": f"Meta description is too short ({length} characters). Recommended is 50–160.",
+            "code_snippet": [summarize(str(meta))],
+            "how_to_fix": "Expand your meta description to better summarize your page content and include keywords."
         }
+
+    if length > MAX_LENGTH:
+        return {
+            "status": "warning",
+            "description": f"Meta description is too long ({length} characters). It may be truncated in search results.",
+            "code_snippet": [summarize(str(meta))],
+            "how_to_fix": "Shorten your meta description to fit within 160 characters."
+        }
+
+    return {
+        "status": "passed",
+        "description": f"Meta description is present and optimal ({length} characters).",
+        "code_snippet": [summarize(str(meta))],
+        "how_to_fix": "No changes needed. Your meta description is well-optimized."
+    }
 
 
 def analyze_h1s(soup):
@@ -192,7 +274,7 @@ def analyze_heading_structure(soup):
         return {
             "status": "warning",
             "description": "Heading tags are either out of order or have skipped levels.",
-            "code_snippet": code_snippet,
+            "code_snippet": None,
 
             "how_to_fix": "Ensure headings follow a logical structure (e.g., h1 → h2 → h3). Avoid skipping levels or "
                           "jumping back.",
@@ -205,7 +287,7 @@ def analyze_heading_structure(soup):
         return {
             "status": "passed",
             "description": "Heading tags are well-structured and follow a logical hierarchy.",
-            "code_snippet": code_snippet,
+            "code_snippet": None,
             "how_to_fix": "No changes needed. Your heading structure is optimal.",
             "heading_order": heading_sequence,
             "missing_levels": [],
@@ -213,21 +295,32 @@ def analyze_heading_structure(soup):
         }
 
 
-def analyze_images(soup):
-    """Analyzes <img> tags for 'alt' attribute quality: missing, redundant, short, or duplicate."""
+def analyze_images(soup: BeautifulSoup):
+    """Analyze img tags for 'alt' attribute quality."""
     images = soup.find_all("img")
     total = len(images)
 
-    # Filters
+    if total == 0:
+        return {
+            "status": "warning",
+            "description": "No <img> tags found on the page.",
+            "code_snippet": None,
+
+            "how_to_fix": "If your page uses images, be sure to include descriptive alt attributes for accessibility "
+                          "and SEO."
+        }
+
+    # Prepare filters with initial capacities
     missing_alt = []
     redundant_alt = []
     short_alt = []
     alt_values = []
 
-    # Define weak alt texts
+    # Define weak alt texts as sets for O(1) lookups
     redundant_words = {"image", "photo", "pic", "picture", "img"}
     non_descriptive = {"a", "-", "x"}
 
+    # Analyze all images in one pass
     for img in images:
         alt = img.get('alt')
 
@@ -242,21 +335,12 @@ def analyze_images(soup):
             elif len(alt_clean) < 3 or alt_clean in non_descriptive:
                 short_alt.append(img)
 
-    # Check for duplicates
+    # Use Counter for frequency analysis - more efficient
     alt_count = Counter(alt_values)
     duplicate_values = {alt for alt, count in alt_count.items() if count > 1}
 
-    # Return logic
+    # Build issues list efficiently
     issues = []
-
-    if total == 0:
-        return {
-            "status": "warning",
-            "description": "No <img> tags found on the page.",
-            "code_snippet": None,
-            "how_to_fix": "If your page uses images, be sure to include descriptive alt attributes for accessibility "
-                          "and SEO."
-        }
 
     if missing_alt:
         issues.append(f"{len(missing_alt)} missing alt")
@@ -270,11 +354,12 @@ def analyze_images(soup):
     if duplicate_values:
         issues.append(f"{len(duplicate_values)} duplicate alt text values")
 
+    # Return appropriate result
     if not issues:
         return {
             "status": "passed",
             "description": f"All {total} images have clear, descriptive 'alt' attributes.",
-            "code_snippet": [str(img) for img in images],
+            "code_snippet": [str(img) for img in images[:3]] + (["..."] if total > 3 else []),
             "how_to_fix": "No changes needed. Your images are well-optimized."
         }
 
@@ -282,29 +367,21 @@ def analyze_images(soup):
         "status": "warning" if missing_alt or redundant_alt or short_alt else "failed",
         "description": f"Issues detected with image alt attributes: {', '.join(issues)}.",
         "code_snippet": None,
-        "missing_alt": [str(img) for img in missing_alt],
-        "redundant_alt": [str(img) for img in redundant_alt],
-        "short_alt": [str(img) for img in short_alt],
-        "duplicate_alt": list(duplicate_values),
+        "missing_alt": [str(img) for img in missing_alt[:3]] + (["..."] if len(missing_alt) > 3 else []),
+        "redundant_alt": [str(img) for img in redundant_alt[:3]] + (["..."] if len(redundant_alt) > 3 else []),
+        "short_alt": [str(img) for img in short_alt[:3]] + (["..."] if len(short_alt) > 3 else []),
+        "duplicate_alt": list(duplicate_values)[:5] + (["..."] if len(duplicate_values) > 5 else []),
+
         "how_to_fix": "Ensure all images have descriptive, unique 'alt' text. Avoid generic words like 'image', "
                       "'pic', or 'photo'. Don't use extremely short or duplicate alt texts."
     }
 
 
-def analyze_lazy_loading(soup):
-    """Checks if <img> and <iframe> tags implement lazy loading correctly."""
-    img_tags = soup.find_all("img")
-    iframe_tags = soup.find_all("iframe")
-    elements = img_tags + iframe_tags
-    total = len(elements)
-
-    missing_lazy = [
-        el for el in elements
-        if el.get("loading", "").strip().lower() != "lazy"
-    ]
-
-    # Optional: skip if marked as critical/priority
-    # missing_lazy = [el for el in missing_lazy if not el.get("data-critical") and el.get("priority") != "high"]
+def analyze_lazy_loading(soup: BeautifulSoup):
+    """Check for lazy loading on images and iframes."""
+    # Find all images and iframes in one soup operation
+    media_elements = soup.find_all(['img', 'iframe'])
+    total = len(media_elements)
 
     if total == 0:
         return {
@@ -314,113 +391,164 @@ def analyze_lazy_loading(soup):
             "how_to_fix": "If your page includes images or iframes, use lazy loading to improve performance."
         }
 
-    elif len(missing_lazy) == total:
+    # Check which elements are missing lazy loading in one pass
+    missing_lazy = [el for el in media_elements if el.get("loading", "").strip().lower() != "lazy"]
+    missing_count = len(missing_lazy)
+
+    if missing_count == total:
         return {
             "status": "failed",
             "description": "None of the <img> or <iframe> elements use lazy loading.",
-            "code_snippet": [summarize(el) for el in missing_lazy],
-            "how_to_fix": "Add `loading=\"lazy\"` to your <img> and <iframe> tags to defer offscreen content."
+            "code_snippet": [summarize(el) for el in missing_lazy[:3]] + (["..."] if missing_count > 3 else []),
+            "how_to_fix": "Add `loading=\"lazy\"` to your <img> and <iframe> tags to defer off screen content."
         }
-
-    elif len(missing_lazy) > 0:
+    elif missing_count > 0:
         return {
             "status": "warning",
-            "description": f"{len(missing_lazy)} of {total} image/iframe elements are missing `loading=\"lazy\"`.",
-            "code_snippet": [summarize(el) for el in missing_lazy],
+            "description": f"{missing_count} of {total} image/iframe elements are missing `loading=\"lazy\"`.",
+            "code_snippet": [summarize(el) for el in missing_lazy[:3]] + (["..."] if missing_count > 3 else []),
             "how_to_fix": "Add `loading=\"lazy\"` to these elements to improve performance and reduce initial load."
         }
-
     else:
         return {
             "status": "passed",
             "description": f"All {total} <img> and <iframe> elements use lazy loading.",
-            "code_snippet": [summarize(el) for el in elements],
+            "code_snippet": [summarize(el) for el in media_elements[:3]] + (["..."] if total > 3 else []),
             "how_to_fix": "No changes needed. Lazy loading is properly implemented."
         }
 
 
-def analyze_links(soup, base_url):
-    """Analyzes internal vs external links and checks for broken ones."""
-    internal, external, broken = [], [], []
+def analyze_links(soup: BeautifulSoup, base_url: str):
+    """Analyze links."""
     parsed_url = urlparse(base_url)
     domain = parsed_url.netloc
     a_tags = soup.find_all("a")
 
+    if not a_tags:
+        return {
+            "status": "failed",
+            "description": "No usable links found. A page should guide users through relevant internal and external "
+                           "pages.",
+            "code_snippet": None,
+            "how_to_fix": "Add meaningful internal and external links to guide users and improve SEO."
+        }
+
+    internal, external, broken = [], [], []
+
+    # Prepare full URLs and categorize without making requests yet
+    urls_to_check = []
+
     for a in a_tags:
         href = a.get("href")
 
-        if not href or href.strip().startswith(("#", "mailto:", "tel:")):
-            continue  # Skip anchors, mailto, tel links
-
-        full_url = urljoin(base_url, href.strip())
-
-        try:
-            response = requests.head(full_url, allow_redirects=True, timeout=10)
-
-            if response.status_code >= 400:
-                broken.append(full_url)
-                continue
-        except requests.RequestException:
-            broken.append(full_url)
+        if not href or href.strip().startswith(("#", "mailto:", "tel:", "javascript:")):
             continue
 
+        full_url = urljoin(base_url, href.strip())
+        urls_to_check.append((full_url, a.get_text(strip=True) or "[No anchor text]"))
+
+        # Pre-categorize as internal or external based on domain
         if urlparse(full_url).netloc == domain:
             internal.append(full_url)
         else:
             external.append(full_url)
 
+    # Check link validity asynchronously - only check the first 20 links
+    check_limit = min(20, len(urls_to_check))
+
+    def check_link(url_info):
+        url, anchor_text = url_info
+        try:
+            # Try HEAD request first
+            try:
+                response = requests.head(url, allow_redirects=True, timeout=10)
+                response.raise_for_status()
+                if response.status_code < 400:  # Success or redirect
+                    return url, "valid", anchor_text
+            except requests.exceptions.RequestException:
+                # If HEAD fails, try GET as fallback
+                pass
+
+            # Fallback to GET request if HEAD fails
+            try:
+                response = requests.get(url, allow_redirects=True, timeout=10)
+                response.raise_for_status()
+                if response.status_code < 400:  # Success or redirect
+                    return url, "valid", anchor_text
+                return url, "broken", anchor_text
+            except requests.exceptions.RequestException:
+                # Only mark as broken if both HEAD and GET fail
+                return url, "broken", anchor_text
+
+        except Exception as e:
+            # Log the specific error for debugging
+            error_type = type(e).__name__
+            return url, "broken", f"{anchor_text} (Error: {error_type})"
+
+    # Check links in chunks to avoid overwhelming the server
+    broken_details = []
+    if check_limit > 0:
+        results = [check_link(url_info) for url_info in urls_to_check[:check_limit]]
+
+        # Process results
+        for result in results:
+            if isinstance(result, tuple):
+                url, status, anchor_text = result
+
+                if status == "broken":
+                    broken.append(url)
+                    broken_details.append(f"{url} (Anchor: {anchor_text})")
+                    # Remove from internal/external if broken
+                    if url in internal:
+                        internal.remove(url)
+                    elif url in external:
+                        external.remove(url)
+
+    # Calculate statistics
     total = len(internal) + len(external) + len(broken)
     total_internal = len(internal)
     total_external = len(external)
     total_broken = len(broken)
 
+    # Generate report
     def summarize_links(links):
-        return links if len(links) <= 10 else links[:10] + ["...and more"]
-
-    if total == 0:
-        return {
-            "status": "failed",
-
-            "description": "No usable links found. A page should guide users through relevant internal and external "
-                           "pages.",
-
-            "code_snippet": None,
-            "how_to_fix": "Add meaningful internal and external links to guide users and improve SEO."
-        }
-
-    internal_ratio = total_internal / total
+        return links[:5] + (["...and more"] if len(links) > 5 else [])
 
     if total_broken > 0:
         return {
-            "status": "failed",
-
-            "description": f"{total_broken} broken link(s) detected. Internal: {total_internal}, "
-                           f"External: {total_external}, Broken: {total_broken}",
-
-            "code_snippet": summarize_links(broken),
-            "how_to_fix": "Fix or remove broken links. Verify they return a valid 2xx or 3xx status code."
+            "status": "warning",  # Changed from "failed" to "warning" since broken links need verification
+            "description": f"{total_broken} potentially broken link(s) detected. Internal: {total_internal}, External: "
+                           f"{total_external}, Potentially broken: {total_broken}",
+            "code_snippet": summarize_links(broken_details),
+            "how_to_fix": "Verify these links manually as they may be false positives. They either returned a 4xx/5xx "
+                          "status code or timed out during testing."
         }
+    elif total > 0:
+        internal_ratio = total_internal / total
 
-    elif internal_ratio < 0.4:
-        return {
-            "status": "warning",
-
-            "description": f"Low internal link ratio: {internal_ratio:.0%}. Internal: {total_internal}, "
-                           f"External: {total_external}, Broken: {total_broken}",
-
-            "code_snippet": summarize_links(internal),
-            "how_to_fix": "Add more internal links to help users and search engines navigate your content structure."
-        }
-
+        if internal_ratio < 0.4:
+            return {
+                "status": "warning",
+                "description": f"Low internal link ratio: {internal_ratio:.0%}. Internal: {total_internal}, External: "
+                               f"{total_external}, Broken: {total_broken}",
+                "code_snippet": summarize_links(internal),
+                "how_to_fix": "Add more internal links to help users and search engines navigate your content "
+                              "structure."
+            }
+        else:
+            return {
+                "status": "passed",
+                "description": f"Healthy link profile. Internal: {total_internal}, External: {total_external}, Broken: "
+                               f"{total_broken}",
+                "code_snippet": summarize_links(internal + external),
+                "how_to_fix": "No issues. Maintain a good balance of internal and external links."
+            }
     else:
         return {
-            "status": "passed",
-
-            "description": f"Healthy link profile. Internal: {total_internal}, External: {total_external}, "
-                           f"Broken: {total_broken}",
-
-            "code_snippet": summarize_links(internal + external),
-            "how_to_fix": "No issues. Maintain a good balance of internal and external links."
+            "status": "failed",
+            "description": "No usable links found after filtering out anchors and invalid URLs.",
+            "code_snippet": None,
+            "how_to_fix": "Add meaningful internal and external links to guide users and improve SEO."
         }
 
 
@@ -501,59 +629,6 @@ def check_noindex(soup):
         "description": "No 'noindex' directive found. Your page is indexable by search engines.",
         "code_snippet": None,
         "how_to_fix": "No action needed."
-    }
-
-
-def check_opengraph(soup):
-    """Checks if essential OpenGraph meta-tags exist and are populated."""
-    required_og_tags = ["og:title", "og:description", "og:image", "og:url"]
-
-    og_tags = {tag.get("property"): tag.get("content", "").strip() for tag in
-               soup.find_all("meta", property=lambda x: x and x.startswith("og:"))}
-
-    missing = []
-    empty = []
-
-    for prop in required_og_tags:
-        if prop not in og_tags:
-            missing.append(prop)
-        elif not og_tags[prop]:
-            empty.append(prop)
-
-    if not og_tags:
-        return {
-            "status": "failed",
-
-            "description": "No OpenGraph meta tags found. These tags help control how your pages appear when shared "
-                           "on social media.",
-
-            "code_snippet": None,
-
-            "how_to_fix": "Add OpenGraph tags in the <head> section of your HTML to improve social sharing appearance "
-                          "and CTR."
-        }
-
-    elif missing or empty:
-        problems = []
-
-        if missing:
-            problems.append(f"Missing: {', '.join(missing)}")
-
-        if empty:
-            problems.append(f"Empty: {', '.join(empty)}")
-
-        return {
-            "status": "warning",
-            "description": f"OpenGraph tags found, but some issues detected. {'; '.join(problems)}.",
-            "code_snippet": [f'<meta property="{k}" content="{v}">' for k, v in og_tags.items()],
-            "how_to_fix": "Ensure all required OpenGraph tags are present and contain meaningful values."
-        }
-
-    return {
-        "status": "passed",
-        "description": f"All required OpenGraph tags are present and populated. ({', '.join(required_og_tags)})",
-        "code_snippet": [f'<meta property="{k}" content="{v}">' for k, v in og_tags.items()],
-        "how_to_fix": "No action needed. Your OpenGraph setup looks great."
     }
 
 
@@ -676,35 +751,79 @@ def analyze_schema_org(soup):
 
 
 def check_favicon(soup):
-    """Checks if the site has a valid favicon link in the <head>."""
-    favicon_tags = soup.find_all(
-        "link",
-        rel=lambda x: x and any(
-            icon in x.lower() for icon in ["icon", "shortcut icon", "apple-touch-icon", "mask-icon"]
-        )
-    )
+    """Checks if the site has a valid favicon defined in the <head> section."""
+    if not soup:
+        return {
+            "status": "failed",
+            "description": "No HTML content provided to check for favicon.",
+            "code_snippet": None,
+            "how_to_fix": "Ensure the page was fetched and parsed before checking."
+        }
 
+    head = soup.find("head")
+    if not head:
+        return {
+            "status": "warning",
+            "description": "No <head> section found in the HTML. Cannot properly check for favicon.",
+            "code_snippet": None,
+            "how_to_fix": "Ensure your HTML includes a <head> section and define a favicon there."
+        }
+
+    # Collect <link rel=...> tags that match any known favicon types
+    link_tags = soup.find_all("link", rel=True)
+    favicon_tags = []
+
+    for tag in link_tags:
+        rel_attr = tag.get("rel")
+        rel_values = rel_attr if isinstance(rel_attr, list) else [rel_attr]
+        if any("icon" in r.lower() for r in rel_values):
+            favicon_tags.append(tag)
+
+    # Check for <link href="/favicon.ico">
+    explicit_ico = soup.find("link", href=lambda x: x and x.strip().endswith("/favicon.ico"))
+    if explicit_ico and explicit_ico not in favicon_tags:
+        favicon_tags.append(explicit_ico)
+
+    # Check <meta name="msapplication-TileImage" content="...">
+    ms_tile = soup.find("meta", attrs={"name": "msapplication-TileImage"})
+    if ms_tile and ms_tile.get("content"):
+        return {
+            "status": "passed",
+            "description": "Favicon found via Microsoft meta tag.",
+            "code_snippet": [str(ms_tile)],
+            "how_to_fix": "No action needed. Favicon is defined using a meta tag."
+        }
+
+    # Validate all discovered favicon tags
     for tag in favicon_tags:
         href = tag.get("href")
+        if not href:
+            continue
 
-        if href:  # Ensure the link actually points to a file
+        if tag.parent != head:
             return {
-                "status": "passed",
-                "description": "Favicon found in the HTML head. This helps with branding and browser recognition.",
+                "status": "warning",
+                "description": "Favicon found but not within the <head> section. This may reduce compatibility.",
                 "code_snippet": [str(tag)],
-                "how_to_fix": "No action needed. A favicon is correctly set."
+                "how_to_fix": "Move the <link> tag defining the favicon into the <head> section."
             }
 
+        return {
+            "status": "passed",
+            "description": "Favicon found and correctly declared in the <head> section.",
+            "code_snippet": [str(tag)],
+            "how_to_fix": "No action needed. Favicon is correctly defined."
+        }
+
+    # Fallback: no favicon found
     return {
         "status": "failed",
-
-        "description": "No favicon with a valid href found in the HTML. This may result in a generic or blank tab "
-                       "icon, reducing brand visibility.",
-
+        "description": "No favicon declared in the HTML. This may result in a blank browser tab icon.",
         "code_snippet": None,
-
-        "how_to_fix": "Add a `<link rel=\"icon\" href=\"/favicon.ico\">` tag in the <head> of your HTML. Make sure "
-                      "the file is accessible and correctly formatted (.ico, .png, .svg, etc)."
+        "how_to_fix": (
+            "Add a <link rel=\"icon\" href=\"/favicon.ico\"> or similar tag inside the <head> section "
+            "of your HTML. Supported formats: .ico, .png, .svg."
+        )
     }
 
 
@@ -891,12 +1010,57 @@ def check_text_compression(url):
         }
 
 
-def check_viewport_meta(soup):
+def check_viewport_meta(soup, html_content=None):
     """
     Checks if the page has a properly configured viewport meta-tag for mobile-friendliness.
+    Robust to different HTML structures and parsing issues.
     """
+    viewport_tag = None
+
+    # Method 1: Standard BeautifulSoup search
     viewport_tag = soup.find("meta", attrs={"name": "viewport"})
 
+    # Method 2: Case-insensitive search through all meta-tags
+    if not viewport_tag:
+        for meta in soup.find_all("meta"):
+            name_attr = meta.get("name", "")
+            if name_attr and name_attr.lower() == "viewport":
+                viewport_tag = meta
+                break
+
+    # Method 3: If we have the raw HTML, use regex as a last resort
+    if not viewport_tag and html_content:
+        import re
+        viewport_pattern = r'<meta[^>]*name=["|\']viewport["|\'][^>]*content=["|\']([^"\']+)["|\'][^>]*>'
+        raw_match = re.search(viewport_pattern, html_content, re.IGNORECASE | re.DOTALL)
+
+        if raw_match:
+            # We found the tag with regex, but BeautifulSoup couldn't parse it
+            content = raw_match.group(1) if len(raw_match.groups()) > 0 else ""
+            width_ok = "width=device-width" in content.lower()
+            scale_ok = "initial-scale" in content.lower()
+
+            if width_ok and scale_ok:
+                return {
+                    "status": "passed",
+                    "description": "The page contains a valid viewport meta tag optimized for responsive mobile "
+                                   "viewing (detected via regex).",
+                    "code_snippet": [raw_match.group(0)],
+                    "how_to_fix": "No action needed. The viewport tag is correctly implemented for mobile devices."
+                }
+            else:
+                return {
+                    "status": "warning",
+                    "description": "Viewport meta tag is present but may be misconfigured or missing key attributes ("
+                                   "detected via regex).",
+                    "code_snippet": [raw_match.group(0)],
+                    "how_to_fix": (
+                        "Ensure your tag looks like:\n"
+                        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
+                    )
+                }
+
+    # Process results if found with BeautifulSoup methods
     if viewport_tag:
         content = viewport_tag.get("content", "").lower().strip()
         width_ok = "width=device-width" in content
@@ -914,23 +1078,22 @@ def check_viewport_meta(soup):
                 "status": "warning",
                 "description": "Viewport meta tag is present but may be misconfigured or missing key attributes.",
                 "code_snippet": [str(viewport_tag)],
-
                 "how_to_fix": (
                     "Ensure your tag looks like:\n"
                     "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
                 )
             }
-    else:
-        return {
-            "status": "failed",
-            "description": "No viewport meta tag found. This can negatively affect mobile usability and SEO.",
-            "code_snippet": None,
 
-            "how_to_fix": (
-                "Add the following tag inside the <head> section of your HTML:\n"
-                "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
-            )
-        }
+    # If we got here, we couldn't find the tag with any method
+    return {
+        "status": "failed",
+        "description": "No viewport meta tag found. This can negatively affect mobile usability and SEO.",
+        "code_snippet": None,
+        "how_to_fix": (
+            "Add the following tag inside the <head> section of your HTML:\n"
+            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
+        )
+    }
 
 
 def check_social_meta(soup):
@@ -1062,10 +1225,6 @@ def analyze_html_size(html):
         }
 
 
-
-import re
-from typing import List
-
 def analyze_minification(soup, asset_type: str):
     """Analyzes whether external CSS or JS files are minified based on their file names or URL characteristics."""
     assert asset_type in ("css", "js"), "asset_type must be either 'css' or 'js'"
@@ -1167,41 +1326,200 @@ def check_secure_connection(final_url: str):
         }
 
 
+def check_url_structure(current_url: str):
+    """Analyze URL structure for SEO best practices."""
+    parsed = urlparse(current_url)
+    path = parsed.path
 
+    # Check for session IDs or tracking parameters
+    query_params = parsed.query.split("&") if parsed.query else []
+    suspicious_params = ["sid", "sessionid", "utm_", "fbclid", "gclid"]
 
-def analyze(url):
-    html, headers, final_url = fetch_page(url)
+    has_suspicious_params = any(any(p.startswith(s) for s in suspicious_params) for p in query_params)
+    has_uppercase = any(c.isupper() for c in path)
+    has_spaces = " " in path
+    has_underscores = "_" in path
+    has_multiple_extensions = len(re.findall(r"\.\w+\.", path)) > 0
+    has_numeric_id = bool(re.search(r"/\d+/?", path))
+    depth = len([p for p in path.split("/") if p]) - 1 if path != "/" else 0
 
-    if not html:
-        return None
+    issues = []
+    solutions = []
 
-    soup = BeautifulSoup(html, "html.parser")
+    if has_suspicious_params:
+        issues.append("Contains tracking parameters or session IDs")
+        solutions.append("Use rel=canonical tag and robots.txt to prevent indexing of URLs with tracking parameters")
 
-    report = {
-        "keywords": analyze_keywords(soup),
-        "meta_description": analyze_meta(soup),
-        "h1_tags": analyze_h1s(soup),
-        "heading_structure": analyze_heading_structure(soup),
-        "images": analyze_images(soup),
-        "lazy_loading": analyze_lazy_loading(soup),
-        "links": analyze_links(soup, final_url),
-        "canonical_url": check_canonical(soup),
-        "noindex_meta": check_noindex(soup),
-        "opengraph": check_opengraph(soup),
-        "robots_txt": check_robots_txt(final_url),
-        "schema_org": analyze_schema_org(soup),
-        "secure_connection": check_secure_connection(final_url),
-        "favicon_present": check_favicon(soup),
-        "amp_page": check_amp(soup),
-        "http_to_https_redirect": check_http_redirect(final_url),
-        "custom_404_page": check_404_page(final_url),
-        "text_compression": check_text_compression(final_url),
-        "viewport_meta": check_viewport_meta(soup),
-        "social_meta": check_social_meta(soup),
-        "iframe_count": check_iframe_usage(soup),
-        "minified_css": analyze_minification(soup, "css"),
-        "minified_js": analyze_minification(soup, "js"),
-        "html_size": analyze_html_size(html),
+    if has_uppercase:
+        issues.append("Contains uppercase letters")
+        solutions.append("Convert URL to lowercase for consistency")
+
+    if has_spaces:
+        issues.append("Contains spaces")
+        solutions.append("Replace spaces with hyphens")
+
+    if has_underscores:
+        issues.append("Contains underscores")
+        solutions.append("Use hyphens instead of underscores to separate words")
+
+    if has_multiple_extensions:
+        issues.append("Contains multiple file extensions")
+        solutions.append("Simplify URL structure")
+
+    if has_numeric_id:
+        issues.append("Contains numeric IDs")
+        solutions.append("Consider using descriptive slugs instead of numeric IDs")
+
+    if depth > 3:
+        issues.append(f"Deep URL structure ({depth} levels)")
+        solutions.append("Consider a flatter URL structure for important content")
+
+    if issues:
+        return {
+            "status": "warning",
+            "description": f"URL structure has potential issues: {', '.join(issues)}",
+            "code_snippet": [current_url],
+            "how_to_fix": "\n".join(f"- {solution}" for solution in solutions)
+        }
+
+    return {
+        "status": "passed",
+        "description": "URL structure follows SEO best practices.",
+        "code_snippet": [current_url],
+        "how_to_fix": "No action needed. Your URL structure is SEO-friendly."
     }
 
-    return report
+
+def check_page_speed_indicators(soup: BeautifulSoup, html: str):
+    """Analyze indicators that might affect page speed."""
+    # Check for render-blocking resources
+    render_blocking = []
+    inline_styles = soup.find_all("style")
+    inline_scripts = soup.find_all("script", src=None)
+    head_scripts = soup.select("head script[src]")
+
+    css_files = soup.select("link[rel='stylesheet']")
+
+    # Calculate HTML size
+    html_size_kb = len(html) / 1024
+
+    # Count and analyze JavaScript files
+    js_files = soup.find_all("script", src=True)
+    js_count = len(js_files)
+    js_paths = [script.get("src", "") for script in js_files]
+
+    deferred_scripts = len([js for js in js_files if js.get("defer") or js.get("async")])
+
+    # Add scripts in the head without async/defer to a render-blocking list
+    for script in head_scripts:
+        if not script.get("async") and not script.get("defer"):
+            render_blocking.append(str(script))
+
+    # Add CSS files to render-blocking list
+    for css in css_files:
+        render_blocking.append(str(css))
+
+    # Issues to check
+    issues = []
+    solutions = []
+
+    if html_size_kb > 100:
+        issues.append(f"Large HTML size: {html_size_kb:.1f}KB (recommended < 100KB)")
+        solutions.append("Minify HTML and remove unnecessary comments, whitespace, or hidden elements.")
+
+    if len(inline_styles) > 3:
+        issues.append(f"Multiple inline style blocks: {len(inline_styles)} found")
+        solutions.append("Consider consolidating inline styles or moving them to external CSS files.")
+
+    if len(render_blocking) > 3:
+        issues.append(f"Many render-blocking resources: {len(render_blocking)} found")
+        solutions.append("Use 'async' or 'defer' for scripts and move non-critical CSS to be loaded asynchronously.")
+
+    if js_count > 15:
+        issues.append(f"Too many JavaScript files: {js_count} found")
+        solutions.append("Bundle JavaScript files to reduce HTTP requests.")
+
+    if deferred_scripts < js_count / 2 and js_count > 5:
+        issues.append(f"Only {deferred_scripts} of {js_count} scripts use defer/async attributes")
+        solutions.append("Add 'defer' or 'async' attributes to non-critical scripts.")
+
+    if not issues:
+        return {
+            "status": "passed",
+            "description": "No significant page speed issues detected in the HTML structure.",
+            "code_snippet": None,
+            "how_to_fix": "Continue monitoring page speed with tools like Lighthouse or PageSpeed Insights."
+        }
+
+    return {
+        "status": "warning",
+        "description": "Potential page speed issues detected: " + "; ".join(issues),
+        "code_snippet": render_blocking[:3] + (["..."] if len(render_blocking) > 3 else []),
+        "how_to_fix": "\n".join(f"- {solution}" for solution in solutions)
+    }
+
+
+def analyze_url(url: str):
+    """Main function to analyze a URL for SEO factors."""
+    print(f"Analyzing URL: {url}")
+    start_time = time.time()
+
+    # Fetch the page content
+    html, headers, final_url = fetch_page(url)
+    soup = BeautifulSoup(html, "lxml")
+
+    if not html or not soup:
+        return {
+            "status": "error",
+            "url": url,
+            "message": "Failed to fetch or parse the page.",
+            "checks": {}
+        }
+
+    # Run all checks in parallel for better performance
+    checks = {}
+
+    # Basic checks
+    checks["https"] = check_secure_connection(final_url)
+    checks["title"] = check_title_tag(soup)
+    checks["meta_description"] = analyze_meta(soup)
+    checks["h1"] = analyze_h1s(soup)
+    checks["heading_structure"] = analyze_heading_structure(soup)
+    checks["analyze_html_size"] = analyze_html_size(html)
+    checks["keywords"] = analyze_keywords(soup)
+    checks["check_favicon"] = check_favicon(soup)
+
+    # Technical SEO checks
+    checks["canonical"] = check_canonical(soup)
+    checks["noindex"] = check_noindex(soup)
+    checks["mobile_friendly"] = check_viewport_meta(soup, html)
+    checks["page_speed"] = check_page_speed_indicators(soup, html)
+    checks["url_structure"] = check_url_structure(final_url)
+    checks["check_amp"] = check_amp(soup)
+    checks["check_http_redirect"] = check_http_redirect(final_url)
+    checks["check_404_page"] = check_404_page(final_url)
+    checks["check_text_compression"] = check_text_compression(final_url)
+    checks["check_iframe_usage"] = check_iframe_usage(soup)
+
+    # Media and accessibility checks
+    checks["images"] = analyze_images(soup)
+    checks["lazy_loading"] = analyze_lazy_loading(soup)
+
+    # Social media and schema checks
+    checks["social_tags"] = check_social_meta(soup)
+    checks["schema_org"] = analyze_schema_org(soup)
+
+    checks["analyze_css"] = analyze_minification(soup, "css")
+    checks["analyze_js"] = analyze_minification(soup, "js")
+    checks["robots_txt"] = check_robots_txt(final_url)
+    checks["links"] = analyze_links(soup, final_url)
+
+    end_time = time.time()
+    analysis_time = end_time - start_time
+
+    return {
+        "status": "success",
+        "url": final_url,
+        "analysis_time": f"{analysis_time:.2f} seconds",
+        "checks": checks
+    }

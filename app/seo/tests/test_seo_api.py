@@ -52,10 +52,10 @@ class PrivateSEOAPITests(TestCase):
         """Test SEO analysis with invalid URL."""
         res = self.client.get(SEO_ANALYZER_URL, params={"url": "invalid-url"})
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("error", res.data)
+        self.assertEqual(res.data["status"], "error")
 
     def test_seo_analyze_no_url(self):
         """Test SEO analysis without URL."""
         res = self.client.get(SEO_ANALYZER_URL)
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("error", res.data)
+        self.assertEqual(res.data["status"], "error")

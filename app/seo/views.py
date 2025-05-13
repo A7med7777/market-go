@@ -1,3 +1,5 @@
+import asyncio
+
 from drf_spectacular.utils import (
     extend_schema_view,
     extend_schema,
@@ -65,21 +67,23 @@ class SEOView(APIView):
     )
     def get(self, request, format=None):
         url = request.query_params.get('url')
-        analyze_data = seo_analyzer.analyze(url)
+        res = seo_analyzer.analyze_url(url)
 
-        if analyze_data is None:
+        if res["status"] == "error":
             return Response(
-                {"error": "Invalid URL provided."},
+                res,
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        seo_score = calculate_seo_score(analyze_data)
+        seo_score = calculate_seo_score(res["checks"])
 
         serializer = SEOResultSerializer(
             data={
+                "status": res["status"],
+                "analysis_time": res["analysis_time"],
                 "url": url,
                 "seo_score": seo_score,
-                "seo_analyze_data": analyze_data
+                "seo_analysis_data": res["checks"],
             }
         )
 

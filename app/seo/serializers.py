@@ -17,6 +17,8 @@ class SEOCheckSerializer(serializers.Serializer):
 
 
 class SEOResultSerializer(serializers.Serializer):
+    status = serializers.CharField()
+    analysis_time = serializers.CharField()
     url = serializers.URLField()
     seo_score = serializers.DictField()
-    seo_analyze_data = serializers.DictField(child=SEOCheckSerializer())
+    seo_analysis_data = serializers.DictField(child=SEOCheckSerializer())
