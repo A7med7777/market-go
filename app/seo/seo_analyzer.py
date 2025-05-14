@@ -6,7 +6,7 @@ import nltk
 import json
 import requests
 
-from collections import Counter
+from collections import Counter, defaultdict
 
 from bs4 import BeautifulSoup
 from nltk.tokenize import word_tokenize
@@ -632,6 +632,19 @@ def check_noindex(soup):
     }
 
 
+def parse_robots_directives(lines):
+    directives = defaultdict(list)
+    current_agent = None
+
+    for line in lines:
+        line = line.strip()
+        if line.lower().startswith("user-agent:"):
+            current_agent = line.split(":", 1)[1].strip()
+        elif current_agent and line.lower().startswith("disallow:"):
+            directives[current_agent].append(line.split(":", 1)[1].strip())
+
+    return directives
+
 def check_robots_txt(url):
     """Checks for the existence, accessibility, and structure of a robots.txt file."""
     parsed_url = urlparse(url)
@@ -640,47 +653,51 @@ def check_robots_txt(url):
     try:
         response = requests.get(robots_url, timeout=10)
         content = response.text.strip()
+        lines = content.splitlines()
 
-        if response.status_code == 200 and "User-agent" in content:
-            lines = content.splitlines()
+        if response.status_code == 200:
+            if not any("User-agent" in line for line in lines):
+                return {
+                    "status": "warning",
+                    "description": "robots.txt file is accessible but contains no `User-agent` directives.",
+                    "code_snippet": lines[:min(6, len(lines))],
+                    "how_to_fix": "Add at least one `User-agent` directive to control bot behavior."
+                }
 
-            has_disallow_all = any("Disallow: /" in line and "User-agent: *" in lines[i - 1]
-                                   for i, line in enumerate(lines) if i > 0)
-
+            directives = parse_robots_directives(lines)
+            has_disallow_all = "*" in directives and "/" in directives["*"]
             has_sitemap = any("Sitemap:" in line for line in lines)
 
             if has_disallow_all:
                 return {
                     "status": "warning",
-                    "description": f"A `robots.txt` file is found, but it blocks all bots with `Disallow: /`.",
-                    "code_snippet": lines[:6],
+                    "description": "A `robots.txt` file is found, but it blocks all bots with `Disallow: /`.",
+                    "code_snippet": lines[:min(6, len(lines))],
                     "how_to_fix": "Ensure this is intentional. If not, change `Disallow: /` to allow crawling."
                 }
 
-            message = f"A valid robots.txt file was found at {robots_url}."
-
+            description = f"A valid robots.txt file was found at {robots_url}."
             if not has_sitemap:
-                message += " However, no Sitemap directive was found."
+                description += " However, no Sitemap directive was found."
 
             return {
                 "status": "passed" if has_sitemap else "warning",
-                "description": message,
-                "code_snippet": lines[:6],
-                "how_to_fix": "No action needed." if has_sitemap else
-                "Add a `Sitemap: https://example.com/sitemap.xml` line to your robots.txt file."
+                "description": description,
+                "code_snippet": lines[:min(6, len(lines))],
+                "how_to_fix": "No action needed." if has_sitemap else "Add a `Sitemap: https://example.com/sitemap.xml` line to your robots.txt file."
             }
+
         elif response.status_code == 404:
             return {
                 "status": "failed",
-
-                "description": "No robots.txt file was found. This may prevent search engines from knowing what to "
-                               "crawl or avoid.",
-
-                "code_snippet": ['robots.txt not found at ' + robots_url],
-
-                "how_to_fix": "Create a `robots.txt` file at the root of your domain to control crawler behavior. "
-                              "Example:\n\nUser-agent: *\nDisallow:\nAllow: /\nSitemap: https://example.com/sitemap.xml"
+                "description": "No robots.txt file was found. This may prevent search engines from knowing what to crawl or avoid.",
+                "code_snippet": [f"robots.txt not found at {robots_url}"],
+                "how_to_fix": (
+                    "Create a `robots.txt` file at the root of your domain to control crawler behavior. Example:\n\n"
+                    "User-agent: *\nDisallow:\nAllow: /\nSitemap: https://example.com/sitemap.xml"
+                )
             }
+
         else:
             return {
                 "status": "warning",
@@ -688,14 +705,13 @@ def check_robots_txt(url):
                 "code_snippet": [f"Status Code: {response.status_code}"],
                 "how_to_fix": f"Ensure that the file is accessible at {robots_url} and returns a 200 status code."
             }
+
     except requests.RequestException as e:
         return {
             "status": "failed",
             "description": f"An error occurred while trying to access robots.txt: {str(e)}",
             "code_snippet": [f"robots.txt URL: {robots_url}"],
-
-            "how_to_fix": "Check your server configuration, internet connection, or firewall settings to ensure "
-                          "robots.txt is publicly accessible."
+            "how_to_fix": "Check your server configuration, internet connection, or firewall settings to ensure robots.txt is publicly accessible."
         }
 
 
@@ -1466,15 +1482,16 @@ def analyze_url(url: str):
 
     # Fetch the page content
     html, headers, final_url = fetch_page(url)
-    soup = BeautifulSoup(html, "lxml")
 
-    if not html or not soup:
+    if not html:
         return {
             "status": "error",
             "url": url,
             "message": "Failed to fetch or parse the page.",
             "checks": {}
         }
+
+    soup = BeautifulSoup(html, "lxml")
 
     # Run all checks in parallel for better performance
     checks = {}
