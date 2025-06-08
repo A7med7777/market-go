@@ -32,4 +32,9 @@ urlpatterns = [
     ),
     path('api/user/', include('user.urls')),
     path('api/seo/', include('seo.urls'), name='seo'),
+    path(
+        'api/sentiment/',
+        include('sentiment_api.urls'),
+        name='sentiment_api',
+    ),
 ]

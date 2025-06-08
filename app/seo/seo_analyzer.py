@@ -56,13 +56,24 @@ def analyze_keywords(soup):
     text = soup.get_text()
     words = [word.lower() for word in word_tokenize(text)]
     stop_words = set(stopwords.words('english'))
-    filtered_words = [word for word in words if word.isalpha() and word not in stop_words]
+
+    filtered_words = [
+        word for word in words
+        if word.isalpha() and word not in stop_words
+    ]
+
     freq = nltk.FreqDist(filtered_words)
 
     return {
-        "common_keywords": [f"({item[0]}, {item[1]})" for item in freq.most_common(10)],
+        "common_keywords": [
+            f"({item[0]}, {item[1]})"
+            for item in freq.most_common(10)
+        ],
         "status": "passed",
-        "description": "A list of keywords that appear frequently in the text of your content.",
+        "description": (
+            "A list of keywords that appear frequently in the text of your "
+            "content."
+        ),
         "code_snippet": None,
         "how_to_fix": None
     }
@@ -77,7 +88,10 @@ def check_title_tag(soup: BeautifulSoup):
             "status": "failed",
             "description": "No title tag found or title is empty.",
             "code_snippet": None,
-            "how_to_fix": "Add a descriptive title tag to your page: <title>Your Page Title</title>"
+            "how_to_fix": (
+                "Add a descriptive title tag to your page: "
+                "<title>Your Page Title</title>"
+            )
         }
 
     title_text = title_tag.text.strip()
@@ -87,18 +101,30 @@ def check_title_tag(soup: BeautifulSoup):
     if title_length < 30:
         return {
             "status": "warning",
-            "description": f"Title tag is too short ({title_length} characters). Ideal length is 50-60 characters.",
+            "description": (
+                f"Title tag is too short ({title_length} characters). "
+                "Ideal length is 50-60 characters."
+            ),
             "code_snippet": [str(title_tag)],
-            "how_to_fix": "Expand your title to include more relevant keywords while keeping it under 60 characters."
+            "how_to_fix": (
+                "Expand your title to include more relevant keywords while "
+                "keeping it under 60 characters."
+            )
         }
 
     # Check if title is too long (might be truncated in search results)
     if title_length > 60:
         return {
             "status": "warning",
-            "description": f"Title tag is too long ({title_length} characters). It may be truncated in search results.",
+            "description": (
+                f"Title tag is too long ({title_length} characters). "
+                "It may be truncated in search results."
+            ),
             "code_snippet": [str(title_tag)],
-            "how_to_fix": "Shorten your title to 50-60 characters to ensure it displays correctly in search results."
+            "how_to_fix": (
+                "Shorten your title to 50-60 characters to ensure it displays "
+                "correctly in search results."
+            )
         }
 
     # Check for common SEO patterns in titles
@@ -107,14 +133,22 @@ def check_title_tag(soup: BeautifulSoup):
     if title_lower.count(" - ") > 1 or title_lower.count(" | ") > 1:
         return {
             "status": "warning",
-            "description": "Title tag contains multiple separators, which may look keyword-stuffed.",
+            "description": (
+                "Title tag contains multiple separators, which may look "
+                "keyword-stuffed."
+            ),
             "code_snippet": [str(title_tag)],
-            "how_to_fix": "Simplify your title structure by using only one separator between brand and page name."
+            "how_to_fix": (
+                "Simplify your title structure by using only one separator "
+                "between brand and page name."
+            )
         }
 
     return {
         "status": "passed",
-        "description": f"Title tag is well-optimized with {title_length} characters.",
+        "description": (
+            f"Title tag is well-optimized with {title_length} characters."
+        ),
         "code_snippet": [str(title_tag)],
         "how_to_fix": "No changes needed. Your title tag is well-optimized."
     }
@@ -129,6 +163,7 @@ CANDIDATE_SELECTORS = [
     {"property": "description"},
     {"name": "twitter:description"},
 ]
+
 
 def analyze_meta(soup: BeautifulSoup):
     """Analyze meta description tag(s) for SEO best practices."""
@@ -154,18 +189,30 @@ def analyze_meta(soup: BeautifulSoup):
         if meta_descriptions:
             return {
                 "status": "warning",
-                "description": "Meta description tags found but none have a valid 'content' attribute.",
-                "code_snippet": [summarize(str(tag)) for tag in meta_descriptions[:3]],
-                "how_to_fix": "Ensure your meta description tags include a non-empty 'content' attribute."
+                "description": (
+                    "Meta description tags found but none have a valid "
+                    "'content' attribute."
+                ),
+                "code_snippet": [
+                    summarize(str(tag)) for tag in meta_descriptions[:3]
+                ],
+                "how_to_fix": (
+                    "Ensure your meta description tags include a non-empty "
+                    "'content' attribute."
+                )
             }
         else:
             return {
                 "status": "failed",
                 "description": "No meta description was found for your page.",
                 "code_snippet": [],
-                "how_to_fix": "Add a meta description in the head section like: "
-                              "<meta name=\"description\" content=\"Your description here\">. "
-                              "Keep it between 50–160 characters summarizing the page content."
+                "how_to_fix": (
+                    "Add a meta description in the head section like: "
+                    "<meta name=\"description\" content=\"Your description "
+                    "here\">. "
+                    "Keep it between 50–160 characters summarizing the page "
+                    "content."
+                )
             }
 
     meta_content = ' '.join(meta["content"].split())
@@ -174,24 +221,39 @@ def analyze_meta(soup: BeautifulSoup):
     if length < MIN_LENGTH:
         return {
             "status": "warning",
-            "description": f"Meta description is too short ({length} characters). Recommended is 50–160.",
+            "description": (
+                f"Meta description is too short ({length} characters). "
+                "Recommended is 50–160."
+            ),
             "code_snippet": [summarize(str(meta))],
-            "how_to_fix": "Expand your meta description to better summarize your page content and include keywords."
+            "how_to_fix": (
+                "Expand your meta description to better summarize your page "
+                "content and include keywords."
+            )
         }
 
     if length > MAX_LENGTH:
         return {
             "status": "warning",
-            "description": f"Meta description is too long ({length} characters). It may be truncated in search results.",
+            "description": (
+                f"Meta description is too long ({length} characters). "
+                "It may be truncated in search results."
+            ),
             "code_snippet": [summarize(str(meta))],
-            "how_to_fix": "Shorten your meta description to fit within 160 characters."
+            "how_to_fix": (
+                "Shorten your meta description to fit within 160 characters."
+            )
         }
 
     return {
         "status": "passed",
-        "description": f"Meta description is present and optimal ({length} characters).",
+        "description": (
+            f"Meta description is present and optimal ({length} characters)."
+        ),
         "code_snippet": [summarize(str(meta))],
-        "how_to_fix": "No changes needed. Your meta description is well-optimized."
+        "how_to_fix": (
+            "No changes needed. Your meta description is well-optimized."
+        )
     }
 
 
@@ -206,31 +268,44 @@ def analyze_h1s(soup):
             "status": "failed",
             "description": "No <h1> tag found on the page.",
             "code_snippet": None,
-            "how_to_fix": "Include one clear and relevant <h1> tag to define the main topic of your page."
+            "how_to_fix": (
+                "Include one clear and relevant <h1> tag to define the main "
+                "topic of your page."
+            )
         }
     elif count == 1:
         return {
             "status": "passed",
             "description": "One <h1> tag found. Ideal for SEO.",
             "code_snippet": snippet,
-            "how_to_fix": "No changes needed. Your <h1> structure is well-optimized."
+            "how_to_fix": (
+                "No changes needed. Your <h1> structure is well-optimized."
+            )
         }
     else:
         return {
             "status": "warning",
 
-            "description": f"{count} <h1> tags found. It's recommended to use only one <h1> tag per page for clear "
-                           f"hierarchy.",
+            "description": (
+                f"{count} <h1> tags found. It's recommended to use only one "
+                "<h1> tag per page "
+                f"for clear hierarchy."
+            ),
 
             "code_snippet": snippet,
 
-            "how_to_fix": "Consolidate multiple <h1> tags into a single, primary heading to help search engines "
-                          "understand your page's topic."
+            "how_to_fix": (
+                "Consolidate multiple <h1> tags into a single, primary heading"
+                " to help search engines understand your page's topic."
+            )
         }
 
 
 def analyze_heading_structure(soup):
-    """Analyzes the heading structure from <h1> to <h6> to detect hierarchy issues."""
+    """
+    Analyzes the heading structure from <h1> to <h6> to detect hierarchy
+    issues.
+    """
     heading_tags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']
     found_headings = soup.find_all(heading_tags)
 
@@ -256,16 +331,16 @@ def analyze_heading_structure(soup):
             break
         last_level = level
 
-    # Prepare code snippet
-    code_snippet = [str(tag) for tag in found_headings]
-
     # Decision logic
     if not heading_sequence:
         return {
             "status": "failed",
             "description": "No heading tags (h1–h6) found on the page.",
             "code_snippet": None,
-            "how_to_fix": "Use structured headings to define content hierarchy (starting from <h1>).",
+            "how_to_fix": (
+                "Use structured headings to define content hierarchy "
+                "(starting from <h1>)."
+            ),
             "heading_order": [],
             "missing_levels": ["h1", "h2", "h3", "h4", "h5", "h6"],
             "out_of_order": False
@@ -273,11 +348,15 @@ def analyze_heading_structure(soup):
     elif out_of_order or missing_levels:
         return {
             "status": "warning",
-            "description": "Heading tags are either out of order or have skipped levels.",
+            "description": (
+                "Heading tags are either out of order or have skipped levels."
+            ),
             "code_snippet": None,
 
-            "how_to_fix": "Ensure headings follow a logical structure (e.g., h1 → h2 → h3). Avoid skipping levels or "
-                          "jumping back.",
+            "how_to_fix": (
+                "Ensure headings follow a logical structure "
+                "(e.g., h1 → h2 → h3). Avoid skipping levels or jumping back."
+            ),
 
             "heading_order": heading_sequence,
             "missing_levels": missing_levels,
@@ -286,9 +365,14 @@ def analyze_heading_structure(soup):
     else:
         return {
             "status": "passed",
-            "description": "Heading tags are well-structured and follow a logical hierarchy.",
+            "description": (
+                "Heading tags are well-structured and follow a logical "
+                "hierarchy."
+            ),
             "code_snippet": None,
-            "how_to_fix": "No changes needed. Your heading structure is optimal.",
+            "how_to_fix": (
+                "No changes needed. Your heading structure is optimal."
+            ),
             "heading_order": heading_sequence,
             "missing_levels": [],
             "out_of_order": False
@@ -306,8 +390,12 @@ def analyze_images(soup: BeautifulSoup):
             "description": "No <img> tags found on the page.",
             "code_snippet": None,
 
-            "how_to_fix": "If your page uses images, be sure to include descriptive alt attributes for accessibility "
-                          "and SEO."
+            "how_to_fix": (
+                (
+                    "If your page uses images, be sure to include descriptive "
+                    "alt attributes for accessibility and SEO."
+                )
+            )
         }
 
     # Prepare filters with initial capacities
@@ -358,22 +446,39 @@ def analyze_images(soup: BeautifulSoup):
     if not issues:
         return {
             "status": "passed",
-            "description": f"All {total} images have clear, descriptive 'alt' attributes.",
-            "code_snippet": [str(img) for img in images[:3]] + (["..."] if total > 3 else []),
+            "description": (
+                f"All {total} images have clear, descriptive 'alt' attributes."
+            ),
+            "code_snippet": (
+                [str(img) for img in images[:3]] +
+                (["..."] if total > 3 else [])
+            ),
             "how_to_fix": "No changes needed. Your images are well-optimized."
         }
 
     return {
-        "status": "warning" if missing_alt or redundant_alt or short_alt else "failed",
-        "description": f"Issues detected with image alt attributes: {', '.join(issues)}.",
+        "status": (
+            "warning"
+            if missing_alt or redundant_alt or short_alt
+            else "failed"
+        ),
+        "description": (
+            f"Issues detected with image alt attributes: {', '.join(issues)}."
+        ),
         "code_snippet": None,
-        "missing_alt": [str(img) for img in missing_alt[:3]] + (["..."] if len(missing_alt) > 3 else []),
-        "redundant_alt": [str(img) for img in redundant_alt[:3]] + (["..."] if len(redundant_alt) > 3 else []),
-        "short_alt": [str(img) for img in short_alt[:3]] + (["..."] if len(short_alt) > 3 else []),
-        "duplicate_alt": list(duplicate_values)[:5] + (["..."] if len(duplicate_values) > 5 else []),
-
-        "how_to_fix": "Ensure all images have descriptive, unique 'alt' text. Avoid generic words like 'image', "
-                      "'pic', or 'photo'. Don't use extremely short or duplicate alt texts."
+        "missing_alt": [str(img) for img in missing_alt[:3]]
+        + (["..."] if len(missing_alt) > 3 else []),
+        "redundant_alt": [str(img) for img in redundant_alt[:3]]
+        + (["..."] if len(redundant_alt) > 3 else []),
+        "short_alt": [str(img) for img in short_alt[:3]]
+        + (["..."] if len(short_alt) > 3 else []),
+        "duplicate_alt": list(duplicate_values)[:5]
+        + (["..."] if len(duplicate_values) > 5 else []),
+        "how_to_fix": (
+            "Ensure all images have descriptive, unique 'alt' text. "
+            "Avoid generic words like 'image', 'pic', or 'photo'. "
+            "Don't use extremely short or duplicate alt texts."
+        ),
     }
 
 
@@ -386,35 +491,68 @@ def analyze_lazy_loading(soup: BeautifulSoup):
     if total == 0:
         return {
             "status": "warning",
-            "description": "No <img> or <iframe> elements found for lazy loading analysis.",
+            "description": (
+                "No <img> or <iframe> elements found for lazy loading "
+                "analysis."
+            ),
             "code_snippet": None,
-            "how_to_fix": "If your page includes images or iframes, use lazy loading to improve performance."
+            "how_to_fix": (
+                "If your page includes images or iframes, use lazy loading to "
+                "improve performance."
+            )
         }
 
     # Check which elements are missing lazy loading in one pass
-    missing_lazy = [el for el in media_elements if el.get("loading", "").strip().lower() != "lazy"]
+    missing_lazy = [
+        el for el in media_elements
+        if el.get("loading", "").strip().lower() != "lazy"
+    ]
     missing_count = len(missing_lazy)
 
     if missing_count == total:
         return {
             "status": "failed",
-            "description": "None of the <img> or <iframe> elements use lazy loading.",
-            "code_snippet": [summarize(el) for el in missing_lazy[:3]] + (["..."] if missing_count > 3 else []),
-            "how_to_fix": "Add `loading=\"lazy\"` to your <img> and <iframe> tags to defer off screen content."
+            "description": (
+                "None of the <img> or <iframe> elements use lazy loading."
+            ),
+            "code_snippet": (
+                [summarize(el) for el in missing_lazy[:3]] +
+                (["..."] if missing_count > 3 else [])
+            ),
+            "how_to_fix": (
+                "Add `loading=\"lazy\"` to your <img> and <iframe> tags to "
+                "defer off screen content."
+            )
         }
     elif missing_count > 0:
         return {
             "status": "warning",
-            "description": f"{missing_count} of {total} image/iframe elements are missing `loading=\"lazy\"`.",
-            "code_snippet": [summarize(el) for el in missing_lazy[:3]] + (["..."] if missing_count > 3 else []),
-            "how_to_fix": "Add `loading=\"lazy\"` to these elements to improve performance and reduce initial load."
+            "description": (
+                f"{missing_count} of {total} image/iframe elements are missing"
+                " `loading=\"lazy\"`."
+            ),
+            "code_snippet": (
+                [summarize(el) for el in missing_lazy[:3]] +
+                (["..."] if missing_count > 3 else [])
+            ),
+            "how_to_fix": (
+                "Add `loading=\"lazy\"` to these elements to improve "
+                "performance and reduce initial load."
+            )
         }
     else:
         return {
             "status": "passed",
-            "description": f"All {total} <img> and <iframe> elements use lazy loading.",
-            "code_snippet": [summarize(el) for el in media_elements[:3]] + (["..."] if total > 3 else []),
-            "how_to_fix": "No changes needed. Lazy loading is properly implemented."
+            "description": (
+                f"All {total} <img> and <iframe> elements use lazy loading."
+            ),
+            "code_snippet": (
+                [summarize(el) for el in media_elements[:3]] +
+                (["..."] if total > 3 else [])
+            ),
+            "how_to_fix": (
+                "No changes needed. Lazy loading is properly implemented."
+            )
         }
 
 
@@ -427,10 +565,15 @@ def analyze_links(soup: BeautifulSoup, base_url: str):
     if not a_tags:
         return {
             "status": "failed",
-            "description": "No usable links found. A page should guide users through relevant internal and external "
-                           "pages.",
+            "description": (
+                "No usable links found. A page should guide users through "
+                "relevant internal and external pages."
+            ),
             "code_snippet": None,
-            "how_to_fix": "Add meaningful internal and external links to guide users and improve SEO."
+            "how_to_fix": (
+                "Add meaningful internal and external links to guide users and"
+                " improve SEO."
+            )
         }
 
     internal, external, broken = [], [], []
@@ -441,11 +584,19 @@ def analyze_links(soup: BeautifulSoup, base_url: str):
     for a in a_tags:
         href = a.get("href")
 
-        if not href or href.strip().startswith(("#", "mailto:", "tel:", "javascript:")):
+        if (
+            not href
+            or href.strip().startswith(("#", "mailto:", "tel:", "javascript:"))
+        ):
             continue
 
         full_url = urljoin(base_url, href.strip())
-        urls_to_check.append((full_url, a.get_text(strip=True) or "[No anchor text]"))
+        urls_to_check.append(
+            (
+                full_url,
+                a.get_text(strip=True) or "[No anchor text]"
+            )
+        )
 
         # Pre-categorize as internal or external based on domain
         if urlparse(full_url).netloc == domain:
@@ -488,7 +639,10 @@ def analyze_links(soup: BeautifulSoup, base_url: str):
     # Check links in chunks to avoid overwhelming the server
     broken_details = []
     if check_limit > 0:
-        results = [check_link(url_info) for url_info in urls_to_check[:check_limit]]
+        results = [
+            check_link(url_info)
+            for url_info in urls_to_check[:check_limit]
+        ]
 
         # Process results
         for result in results:
@@ -516,12 +670,18 @@ def analyze_links(soup: BeautifulSoup, base_url: str):
 
     if total_broken > 0:
         return {
-            "status": "warning",  # Changed from "failed" to "warning" since broken links need verification
-            "description": f"{total_broken} potentially broken link(s) detected. Internal: {total_internal}, External: "
-                           f"{total_external}, Potentially broken: {total_broken}",
+            "status": "warning",
+            "description": (
+                f"{total_broken} potentially broken link(s) detected. "
+                f"Internal: {total_internal}, External: {total_external}, "
+                f"Potentially broken: {total_broken}"
+            ),
             "code_snippet": summarize_links(broken_details),
-            "how_to_fix": "Verify these links manually as they may be false positives. They either returned a 4xx/5xx "
-                          "status code or timed out during testing."
+            "how_to_fix": (
+                "Verify these links manually as they may be false positives. "
+                "They either returned a 4xx/5xx status code or timed out "
+                "during testing."
+            )
         }
     elif total > 0:
         internal_ratio = total_internal / total
@@ -529,31 +689,50 @@ def analyze_links(soup: BeautifulSoup, base_url: str):
         if internal_ratio < 0.4:
             return {
                 "status": "warning",
-                "description": f"Low internal link ratio: {internal_ratio:.0%}. Internal: {total_internal}, External: "
-                               f"{total_external}, Broken: {total_broken}",
+                "description": (
+                    f"Low internal link ratio: {internal_ratio:.0%}. "
+                    f"Internal: {total_internal}, External: {total_external}, "
+                    f"Broken: {total_broken}"
+                ),
                 "code_snippet": summarize_links(internal),
-                "how_to_fix": "Add more internal links to help users and search engines navigate your content "
-                              "structure."
+                "how_to_fix": (
+                    "Add more internal links to help users and search engines "
+                    "navigate your content structure."
+                )
             }
         else:
             return {
                 "status": "passed",
-                "description": f"Healthy link profile. Internal: {total_internal}, External: {total_external}, Broken: "
-                               f"{total_broken}",
+                "description": (
+                    f"Healthy link profile. Internal: {total_internal}, "
+                    f"External: {total_external}, Broken: {total_broken}"
+                ),
                 "code_snippet": summarize_links(internal + external),
-                "how_to_fix": "No issues. Maintain a good balance of internal and external links."
+                "how_to_fix": (
+                    "No issues. Maintain a good balance of internal and "
+                    "external links."
+                )
             }
     else:
         return {
             "status": "failed",
-            "description": "No usable links found after filtering out anchors and invalid URLs.",
+            "description": (
+                "No usable links found after filtering out anchors and invalid"
+                " URLs."
+            ),
             "code_snippet": None,
-            "how_to_fix": "Add meaningful internal and external links to guide users and improve SEO."
+            "how_to_fix": (
+                "Add meaningful internal and external links to guide users and"
+                " improve SEO."
+            )
         }
 
 
 def check_canonical(soup):
-    """Checks for a canonical URL inside the <head> section and validates its format."""
+    """
+    Checks for a canonical URL inside the <head> section and validates its
+    format.
+    """
     head = soup.find("head")
     canonical_tag = soup.find("link", rel="canonical")
     canonical_href = canonical_tag.get("href") if canonical_tag else None
@@ -561,39 +740,60 @@ def check_canonical(soup):
     if not canonical_tag or not canonical_href:
         return {
             "status": "failed",
-            "description": "No canonical URL tag found. This may lead to duplicate content issues.",
+            "description": (
+                "No canonical URL tag found. This may lead to duplicate "
+                "content issues."
+            ),
             "code_snippet": None,
 
-            "how_to_fix": "Add a canonical tag in the <head> section of your page to indicate the preferred version "
-                          "of the URL, e.g. <link rel=\"canonical\" href=\"https://example.com/page\">."
+            "how_to_fix": (
+                "Add a canonical tag in the <head> section of your page to "
+                "indicate the preferred version of the URL, e.g. "
+                "<link rel=\"canonical\" href=\"https://example.com/page\">."
+            )
         }
 
     if head and canonical_tag not in head:
         return {
             "status": "warning",
-            "description": "Canonical tag found, but not inside the <head> section.",
+            "description": (
+                "Canonical tag found, but not inside the <head> section."
+            ),
             "code_snippet": [summarize(str(canonical_tag))],
-            "how_to_fix": "Move your canonical tag into the <head> section for proper SEO recognition."
+            "how_to_fix": (
+                "Move your canonical tag into the <head> section for proper "
+                "SEO recognition."
+            )
         }
 
     if not urlparse(canonical_href).scheme:
         return {
             "status": "warning",
-            "description": f"Canonical tag uses a relative URL: {canonical_href}",
+            "description": (
+                f"Canonical tag uses a relative URL: {canonical_href}"
+            ),
             "code_snippet": [summarize(str(canonical_tag))],
-            "how_to_fix": "Use an absolute URL in your canonical tag to ensure search engines interpret it correctly."
+            "how_to_fix": (
+                "Use an absolute URL in your canonical tag to ensure search "
+                "engines interpret it correctly."
+            )
         }
 
     return {
         "status": "passed",
         "description": f"Canonical URL is set correctly: {canonical_href}",
         "code_snippet": [summarize(str(canonical_tag))],
-        "how_to_fix": "No action needed. Your canonical tag is correctly implemented."
+        "how_to_fix": (
+            "No action needed. Your canonical tag is correctly implemented."
+        )
     }
 
 
 def check_noindex(soup):
-    """Checks if the page has a noindex directive in robots or googlebot meta-tags."""
+    """
+    Checks if the page has a noindex directive in robots or googlebot
+    meta-tags.
+    """
     meta_tags = soup.find_all("meta", attrs={"name": ["robots", "googlebot"]})
     noindex_tags = []
 
@@ -607,26 +807,42 @@ def check_noindex(soup):
         return {
             "status": "failed",
 
-            "description": f'The page contains {len(noindex_tags)} meta tag(s) with a `noindex` directive, '
-                           f'preventing it from being indexed by search engines.',
+            "description": (
+                f'The page contains {len(noindex_tags)} meta tag(s) '
+                f'with a `noindex` directive, '
+                f'preventing it from being indexed by search engines.'
+            ),
 
             "code_snippet": [str(tag) for tag in noindex_tags],
-            "how_to_fix": "Remove the `noindex` directive(s) if you want this page to appear in search engine results."
+            "how_to_fix": (
+                "Remove the `noindex` directive(s) if you want this page to "
+                "appear in search engine results."
+            )
         }
     elif len(meta_tags) > 1:
         return {
             "status": "warning",
 
-            "description": f"Multiple meta robots or googlebot tags found ({len(meta_tags)} total). "
-                           f"This could lead to conflicting instructions for search engines.",
+            "description": (
+                f"Multiple meta robots or googlebot tags found "
+                f"({len(meta_tags)} total). "
+                f"This could lead to conflicting instructions for "
+                f"search engines."
+            ),
 
             "code_snippet": [str(tag) for tag in meta_tags],
-            "how_to_fix": "Ensure you only include one meta tag for robot directives to avoid ambiguity."
+            "how_to_fix": (
+                "Ensure you only include one meta tag for robot directives to "
+                "avoid ambiguity."
+            )
         }
 
     return {
         "status": "passed",
-        "description": "No 'noindex' directive found. Your page is indexable by search engines.",
+        "description": (
+            "No 'noindex' directive found. Your page is indexable by "
+            "search engines."
+        ),
         "code_snippet": None,
         "how_to_fix": "No action needed."
     }
@@ -645,8 +861,12 @@ def parse_robots_directives(lines):
 
     return directives
 
+
 def check_robots_txt(url):
-    """Checks for the existence, accessibility, and structure of a robots.txt file."""
+    """
+    Checks for the existence, accessibility, and structure of a robots.txt
+    file.
+    """
     parsed_url = urlparse(url)
     robots_url = f"{parsed_url.scheme}://{parsed_url.netloc}/robots.txt"
 
@@ -659,9 +879,15 @@ def check_robots_txt(url):
             if not any("User-agent" in line for line in lines):
                 return {
                     "status": "warning",
-                    "description": "robots.txt file is accessible but contains no `User-agent` directives.",
+                    "description": (
+                        "robots.txt file is accessible but contains no "
+                        "`User-agent` directives."
+                    ),
                     "code_snippet": lines[:min(6, len(lines))],
-                    "how_to_fix": "Add at least one `User-agent` directive to control bot behavior."
+                    "how_to_fix": (
+                        "Add at least one `User-agent` directive to control "
+                        "bot behavior."
+                    )
                 }
 
             directives = parse_robots_directives(lines)
@@ -671,9 +897,15 @@ def check_robots_txt(url):
             if has_disallow_all:
                 return {
                     "status": "warning",
-                    "description": "A `robots.txt` file is found, but it blocks all bots with `Disallow: /`.",
+                    "description": (
+                        "A `robots.txt` file is found, but it blocks all bots "
+                        "with `Disallow: /`."
+                    ),
                     "code_snippet": lines[:min(6, len(lines))],
-                    "how_to_fix": "Ensure this is intentional. If not, change `Disallow: /` to allow crawling."
+                    "how_to_fix": (
+                        "Ensure this is intentional. If not, change "
+                        "`Disallow: /` to allow crawling."
+                    )
                 }
 
             description = f"A valid robots.txt file was found at {robots_url}."
@@ -684,34 +916,57 @@ def check_robots_txt(url):
                 "status": "passed" if has_sitemap else "warning",
                 "description": description,
                 "code_snippet": lines[:min(6, len(lines))],
-                "how_to_fix": "No action needed." if has_sitemap else "Add a `Sitemap: https://example.com/sitemap.xml` line to your robots.txt file."
+                "how_to_fix": (
+                    "No action needed."
+                    if has_sitemap
+                    else "Add a `Sitemap: https://example.com/sitemap.xml` "
+                         "line to your robots.txt file."
+                )
             }
 
         elif response.status_code == 404:
             return {
                 "status": "failed",
-                "description": "No robots.txt file was found. This may prevent search engines from knowing what to crawl or avoid.",
+                "description": (
+                    "No robots.txt file was found. This may prevent search "
+                    "engines from knowing what to crawl or avoid."
+                ),
                 "code_snippet": [f"robots.txt not found at {robots_url}"],
                 "how_to_fix": (
-                    "Create a `robots.txt` file at the root of your domain to control crawler behavior. Example:\n\n"
-                    "User-agent: *\nDisallow:\nAllow: /\nSitemap: https://example.com/sitemap.xml"
+                    "Create a `robots.txt` file at the root of your domain to "
+                    "control crawler behavior. Example:\n\n"
+                    "User-agent: *\nDisallow:\nAllow: /\n"
+                    "Sitemap: https://example.com/sitemap.xml"
                 )
             }
 
         else:
             return {
                 "status": "warning",
-                "description": f"A robots.txt file was found but returned status code {response.status_code}.",
+                "description": (
+                    f"A robots.txt file was found but returned status code "
+                    f"{response.status_code}."
+                ),
                 "code_snippet": [f"Status Code: {response.status_code}"],
-                "how_to_fix": f"Ensure that the file is accessible at {robots_url} and returns a 200 status code."
+                "how_to_fix": (
+                    f"Ensure that the file is accessible at {robots_url} "
+                    "and returns a 200 status code."
+                )
             }
 
     except requests.RequestException as e:
         return {
             "status": "failed",
-            "description": f"An error occurred while trying to access robots.txt: {str(e)}",
+            "description": (
+                "An error occurred while trying to access robots.txt: "
+                f"{str(e)}"
+            ),
             "code_snippet": [f"robots.txt URL: {robots_url}"],
-            "how_to_fix": "Check your server configuration, internet connection, or firewall settings to ensure robots.txt is publicly accessible."
+            "how_to_fix": (
+                "Check your server configuration, internet connection, or "
+                "firewall settings to ensure robots.txt is publicly "
+                "accessible."
+            )
         }
 
 
@@ -725,7 +980,10 @@ def analyze_schema_org(soup):
         try:
             data = json.loads(tag.string.strip())
 
-            if isinstance(data, dict) and ("@context" in data or "@type" in data):
+            if (
+                isinstance(data, dict)
+                and ("@context" in data or "@type" in data)
+            ):
                 valid_json_ld.append(tag)
         except (json.JSONDecodeError, AttributeError):
             continue
@@ -746,23 +1004,43 @@ def analyze_schema_org(soup):
 
         return {
             "status": "passed",
-            "description": f"Schema.org structured data found ({format_used}).",
-            "code_snippet": [sample_snippet[:500] + ("..." if len(sample_snippet) > 500 else "")],
-            "how_to_fix": "No action needed. Your page includes valid Schema.org metadata."
+            "description": (
+                f"Schema.org structured data found ({format_used})."
+            ),
+            "code_snippet": [
+                sample_snippet[:500] +
+                ("..." if len(sample_snippet) > 500 else "")
+            ],
+            "how_to_fix": (
+                "No action needed. Your page includes valid Schema.org "
+                "metadata."
+            )
         }
     elif json_ld_tags:
         return {
             "status": "warning",
-            "description": "Found JSON-LD tags, but none appear to contain valid Schema.org metadata.",
+            "description": (
+                "Found JSON-LD tags, but none appear to contain valid "
+                "Schema.org metadata."
+            ),
             "code_snippet": json_ld_tags[0].text.strip()[:500],
-            "how_to_fix": "Ensure your JSON-LD contains Schema.org-compliant fields like `@context` and `@type`."
+            "how_to_fix": (
+                "Ensure your JSON-LD contains Schema.org-compliant fields like"
+                " `@context` and `@type`."
+            )
         }
     else:
         return {
             "status": "failed",
-            "description": "No Schema.org metadata found. This may prevent rich snippets in search results.",
+            "description": (
+                "No Schema.org metadata found. This may prevent rich snippets "
+                "in search results."
+            ),
             "code_snippet": None,
-            "how_to_fix": "Add Schema.org metadata using JSON-LD or Microdata format. Refer to https://schema.org."
+            "how_to_fix": (
+                "Add Schema.org metadata using JSON-LD or Microdata format. "
+                "Refer to https://schema.org."
+            )
         }
 
 
@@ -773,16 +1051,24 @@ def check_favicon(soup):
             "status": "failed",
             "description": "No HTML content provided to check for favicon.",
             "code_snippet": None,
-            "how_to_fix": "Ensure the page was fetched and parsed before checking."
+            "how_to_fix": (
+                "Ensure the page was fetched and parsed before checking."
+            )
         }
 
     head = soup.find("head")
     if not head:
         return {
             "status": "warning",
-            "description": "No <head> section found in the HTML. Cannot properly check for favicon.",
+            "description": (
+                "No <head> section found in the HTML. Cannot properly check "
+                "for favicon."
+            ),
             "code_snippet": None,
-            "how_to_fix": "Ensure your HTML includes a <head> section and define a favicon there."
+            "how_to_fix": (
+                "Ensure your HTML includes a <head> section and define a "
+                "favicon there."
+            )
         }
 
     # Collect <link rel=...> tags that match any known favicon types
@@ -796,7 +1082,10 @@ def check_favicon(soup):
             favicon_tags.append(tag)
 
     # Check for <link href="/favicon.ico">
-    explicit_ico = soup.find("link", href=lambda x: x and x.strip().endswith("/favicon.ico"))
+    explicit_ico = soup.find(
+        "link",
+        href=lambda x: x and x.strip().endswith("/favicon.ico")
+    )
     if explicit_ico and explicit_ico not in favicon_tags:
         favicon_tags.append(explicit_ico)
 
@@ -807,7 +1096,9 @@ def check_favicon(soup):
             "status": "passed",
             "description": "Favicon found via Microsoft meta tag.",
             "code_snippet": [str(ms_tile)],
-            "how_to_fix": "No action needed. Favicon is defined using a meta tag."
+            "how_to_fix": (
+                "No action needed. Favicon is defined using a meta tag."
+            )
         }
 
     # Validate all discovered favicon tags
@@ -819,14 +1110,22 @@ def check_favicon(soup):
         if tag.parent != head:
             return {
                 "status": "warning",
-                "description": "Favicon found but not within the <head> section. This may reduce compatibility.",
+                "description": (
+                    "Favicon found but not within the <head> section. "
+                    "This may reduce compatibility."
+                ),
                 "code_snippet": [str(tag)],
-                "how_to_fix": "Move the <link> tag defining the favicon into the <head> section."
+                "how_to_fix": (
+                    "Move the <link> tag defining the favicon into the <head> "
+                    "section."
+                )
             }
 
         return {
             "status": "passed",
-            "description": "Favicon found and correctly declared in the <head> section.",
+            "description": (
+                "Favicon found and correctly declared in the <head> section."
+            ),
             "code_snippet": [str(tag)],
             "how_to_fix": "No action needed. Favicon is correctly defined."
         }
@@ -834,10 +1133,14 @@ def check_favicon(soup):
     # Fallback: no favicon found
     return {
         "status": "failed",
-        "description": "No favicon declared in the HTML. This may result in a blank browser tab icon.",
+        "description": (
+            "No favicon declared in the HTML. This may result in a blank "
+            "browser tab icon."
+        ),
         "code_snippet": None,
         "how_to_fix": (
-            "Add a <link rel=\"icon\" href=\"/favicon.ico\"> or similar tag inside the <head> section "
+            "Add a <link rel=\"icon\" href=\"/favicon.ico\"> "
+            "or similar tag inside the <head> section "
             "of your HTML. Supported formats: .ico, .png, .svg."
         )
     }
@@ -850,21 +1153,32 @@ def check_amp(soup):
     if amp_link and amp_link.get("href"):
         return {
             "status": "passed",
-            "description": "AMP version of the page is linked using <link rel='amphtml'>.",
+            "description": (
+                "AMP version of the page is linked using <link rel='amphtml'>."
+            ),
             "code_snippet": [str(amp_link)],
-            "how_to_fix": "No action needed. AMP page is present and referenced correctly."
+            "how_to_fix": (
+                "No action needed. AMP page is present and referenced "
+                "correctly."
+            )
         }
     else:
         return {
             "status": "warning",
 
-            "description": "No AMP version found. While not mandatory, having an AMP version can improve mobile speed "
-                           "and visibility in mobile search results.",
+            "description": (
+                "No AMP version found. While not mandatory, having an AMP "
+                "version can improve mobile speed and visibility in mobile "
+                "search results."
+            ),
 
             "code_snippet": None,
 
-            "how_to_fix": "Create a valid AMP version of your content and link it in the <head> with "
-                          "<link rel='amphtml'> to benefit from faster load times and potential search enhancements."
+            "how_to_fix": (
+                "Create a valid AMP version of your content and link it in "
+                "the <head> with <link rel='amphtml'> to benefit from faster "
+                "load times and potential search enhancements."
+            )
         }
 
 
@@ -877,35 +1191,54 @@ def check_http_redirect(base_url):
     try:
         response = requests.get(http_url, allow_redirects=True, timeout=10)
         final_url = response.url
-        redirect_chain = " -> ".join([resp.url for resp in response.history] + [final_url])
+        redirect_chain = " -> ".join(
+            [resp.url for resp in response.history] + [final_url]
+        )
 
         if final_url.startswith("https://"):
             return {
                 "status": "passed",
-                "description": f"HTTP traffic is redirected to HTTPS at {final_url}.",
+                "description": (
+                    f"HTTP traffic is redirected to HTTPS at {final_url}."
+                ),
                 "code_snippet": [f"Redirect chain: {redirect_chain}"],
-                "how_to_fix": "No action needed. HTTP requests are correctly redirected to HTTPS."
+                "how_to_fix": (
+                    "No action needed. HTTP requests are correctly redirected "
+                    "to HTTPS."
+                )
             }
         else:
             return {
                 "status": "failed",
 
-                "description": "HTTP traffic is not redirected to HTTPS. This exposes your site to potential security "
-                               "risks.",
+                "description": (
+                    "HTTP traffic is not redirected to HTTPS. "
+                    "This exposes your site to potential security risks."
+                ),
 
-                "code_snippet": [f"Final URL: {final_url}\nRedirect chain: {redirect_chain}"],
+                "code_snippet": [
+                    f"Final URL: {final_url}\n"
+                    f"Redirect chain: {redirect_chain}"
+                ],
 
-                "how_to_fix": "Configure your server (e.g., Nginx, Apache) to enforce redirection from HTTP to HTTPS "
-                              "using a 301 redirect."
+                "how_to_fix": (
+                    "Configure your server (e.g., Nginx, Apache) to enforce "
+                    "redirection from HTTP to HTTPS using a 301 redirect."
+                )
             }
     except requests.RequestException as e:
         return {
             "status": "failed",
-            "description": f"Unable to perform HTTP to HTTPS redirect check due to an error: {str(e)}",
+            "description": (
+                "Unable to perform HTTP to HTTPS redirect check due to an "
+                f"error: {str(e)}"
+            ),
             "code_snippet": [f"Attempted HTTP URL: {http_url}"],
 
-            "how_to_fix": "Ensure your site is online and accessible. Then, set up automatic redirection from HTTP to "
-                          "HTTPS."
+            "how_to_fix": (
+                "Ensure your site is online and accessible. Then, set up "
+                "automatic redirection from HTTP to HTTPS."
+            )
         }
 
 
@@ -931,21 +1264,41 @@ def check_404_page(base_url):
             if is_custom_404(content):
                 return {
                     "status": "passed",
-                    "description": "Custom 404 page is in place with appropriate messaging.",
-                    "code_snippet": [f"URL: {test_url} returned HTTP 404\nSample content: {snippet}"],
-                    "how_to_fix": "No action needed. Custom 404 page is working."
+                    "description": (
+                        "Custom 404 page is in place with appropriate "
+                        "messaging."
+                    ),
+                    "code_snippet": [
+                        f"URL: {test_url} returned HTTP 404\n"
+                        f"Sample content: {snippet}"
+                    ],
+                    "how_to_fix": (
+                        "No action needed. Custom 404 page is working."
+                    )
                 }
             else:
                 return {
                     "status": "warning",
-                    "description": "Page returns 404 but content doesn't appear customized.",
-                    "code_snippet": [f"URL: {test_url} returned HTTP 404\nSample content: {snippet}"],
-                    "how_to_fix": "Design a user-friendly 404 page with helpful navigation links or a search bar."
+                    "description": (
+                        "Page returns 404 but content doesn't appear "
+                        "customized."
+                    ),
+                    "code_snippet": [
+                        f"URL: {test_url} returned HTTP 404\n"
+                        f"Sample content: {snippet}"
+                    ],
+                    "how_to_fix": (
+                        "Design a user-friendly 404 page with helpful "
+                        "navigation links or a search bar."
+                    )
                 }
         elif status_code == 200:
             return {
                 "status": "failed",
-                "description": f"Invalid URL returned HTTP 200 instead of 404. This confuses search engines and users.",
+                "description": (
+                    "Invalid URL returned HTTP 200 instead of 404. "
+                    "This confuses search engines and users."
+                ),
                 "code_snippet": [f"HTTP {status_code} returned for {test_url}"],
 
                 "how_to_fix": "Ensure the server returns HTTP 404 status code for non-existent pages and displays a "

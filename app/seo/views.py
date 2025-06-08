@@ -1,15 +1,11 @@
-import asyncio
-
 from drf_spectacular.utils import (
-    extend_schema_view,
     extend_schema,
     OpenApiParameter,
-    OpenApiTypes,
 )
 
 from rest_framework import status
-from rest_framework.authentication import TokenAuthentication
-from rest_framework.permissions import IsAuthenticated
+# from rest_framework.authentication import TokenAuthentication
+# from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -35,7 +31,10 @@ def calculate_seo_score(data):
         elif value["status"] == "failed":
             failed_tests += 1
 
-    score = (passed_tests + warnings) * 100 / total_tests if total_tests > 0 else 0
+    score = (
+        (passed_tests + warnings) * 100 / total_tests
+        if total_tests > 0 else 0
+    )
 
     return {
         "total_tests": total_tests,
