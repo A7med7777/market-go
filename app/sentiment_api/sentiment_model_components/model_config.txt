@@ -1,0 +1,13 @@
+Sentiment Analysis Model Configuration
+=====================================
+
+Vocabulary size: 138671
+Maximum sequence length: 200
+Embedding vector length: 32
+Number of words in tokenizer: 5000
+Total samples: 79042
+Label distribution:
+label
+0    43057
+1    35985
+Name: count, dtype: int64

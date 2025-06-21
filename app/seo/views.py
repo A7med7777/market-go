@@ -27,7 +27,7 @@ def calculate_seo_score(data):
         if value["status"] == "passed":
             passed_tests += 1
         elif value["status"] == "warning":
-            warnings += 1
+            warnings += 0.5
         elif value["status"] == "failed":
             failed_tests += 1
 

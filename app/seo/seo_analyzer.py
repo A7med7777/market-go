@@ -1023,7 +1023,7 @@ def analyze_schema_org(soup):
                 "Found JSON-LD tags, but none appear to contain valid "
                 "Schema.org metadata."
             ),
-            "code_snippet": json_ld_tags[0].text.strip()[:500],
+            "code_snippet": None,
             "how_to_fix": (
                 "Ensure your JSON-LD contains Schema.org-compliant fields like"
                 " `@context` and `@type`."
