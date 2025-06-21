@@ -5,7 +5,7 @@ class SEOCheckSerializer(serializers.Serializer):
     common_keywords = serializers.ListField(child=serializers.CharField(), required=False)
     status = serializers.CharField()
     description = serializers.CharField(style={"base_template": "textarea.html"})
-    code_snippet = serializers.ListField(child=serializers.CharField(style={"base_template": "textarea.html"}), required=False, allow_null=True)
+    # code_snippet = serializers.ListField(child=serializers.CharField(style={"base_template": "textarea.html"}), required=False, allow_null=True)
     missing_alt = serializers.ListField(child=serializers.CharField(), required=False)
     redundant_alt = serializers.ListField(child=serializers.CharField(), required=False)
     short_alt = serializers.ListField(child=serializers.CharField(), required=False)
